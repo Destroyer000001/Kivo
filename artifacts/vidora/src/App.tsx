@@ -3,14 +3,82 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { ClerkProvider, Show, SignIn, SignUp, useClerk, useUser } from '@clerk/react';
+import { publishableKeyFromHost } from '@clerk/react/internal';
+import { shadcn } from '@clerk/themes';
 import { Bookmark, Check, ChevronLeft, ChevronRight, Clapperboard, Compass, FileVideo, Heart, Home, Menu, MessageCircle, MoreHorizontal, Play, Plus, Search, Send, Settings, Share2, Sparkles, Upload, UserRound, Users, Volume2, VolumeX, X } from 'lucide-react';
 import { Link, Route, Router as WouterRouter, Switch, useLocation, useParams } from 'wouter';
 
 const queryClient = new QueryClient();
+const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
+const clerkPubKey = publishableKeyFromHost(
+  window.location.hostname,
+  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
+);
+const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
 const LOCAL_METADATA_KEY = 'kivo-local-videos-v1';
 const LOCAL_ACTIONS_KEY = 'kivo-actions-v1';
 const LOCAL_MEDIA_DB = 'kivo-local-media-v1';
 const LOCAL_MEDIA_STORE = 'files';
+
+if (!clerkPubKey) {
+  throw new Error('Missing VITE_CLERK_PUBLISHABLE_KEY in the environment.');
+}
+
+function stripBase(path: string) {
+  return basePath && path.startsWith(basePath)
+    ? path.slice(basePath.length) || '/'
+    : path;
+}
+
+const clerkAppearance = {
+  theme: shadcn,
+  cssLayerName: 'clerk',
+  options: {
+    logoPlacement: 'inside' as const,
+    logoLinkUrl: basePath || '/',
+    logoImageUrl: `${window.location.origin}${basePath}/logo.svg`,
+  },
+  variables: {
+    colorPrimary: '#d8ff4f',
+    colorForeground: '#f5f5f5',
+    colorMutedForeground: '#9d9da7',
+    colorDanger: '#f05f5f',
+    colorBackground: '#171719',
+    colorInput: '#0b0b0d',
+    colorInputForeground: '#f5f5f5',
+    colorNeutral: '#2d2d31',
+    fontFamily: 'DM Sans, sans-serif',
+    borderRadius: '1rem',
+  },
+  elements: {
+    rootBox: 'w-full flex justify-center',
+    cardBox: 'bg-[#171719] rounded-2xl w-[440px] max-w-full overflow-hidden',
+    card: '!shadow-none !border-0 !bg-transparent !rounded-none',
+    footer: '!shadow-none !border-0 !bg-transparent !rounded-none',
+    headerTitle: 'text-[#f5f5f5] font-mono',
+    headerSubtitle: 'text-[#9d9da7]',
+    socialButtonsBlockButtonText: 'text-[#f5f5f5]',
+    formFieldLabel: 'text-[#f5f5f5]',
+    footerActionLink: 'text-[#d8ff4f]',
+    footerActionText: 'text-[#9d9da7]',
+    dividerText: 'text-[#9d9da7]',
+    identityPreviewEditButton: 'text-[#d8ff4f]',
+    formFieldSuccessText: 'text-[#d8ff4f]',
+    alertText: 'text-[#f5f5f5]',
+    logoBox: 'h-10',
+    logoImage: 'max-h-10',
+    socialButtonsBlockButton: 'border-[#2d2d31] bg-[#0b0b0d] hover:bg-[#202024]',
+    formButtonPrimary: 'bg-[#d8ff4f] text-[#0b0b0d] hover:bg-[#c8ef43]',
+    formFieldInput: 'border-[#2d2d31] bg-[#0b0b0d] text-[#f5f5f5]',
+    footerAction: 'border-t border-[#2d2d31]',
+    dividerLine: 'bg-[#2d2d31]',
+    alert: 'border-[#2d2d31] bg-[#202024]',
+    otpCodeFieldInput: 'border-[#2d2d31] bg-[#0b0b0d] text-[#f5f5f5]',
+    formFieldRow: 'text-[#f5f5f5]',
+    main: 'bg-[#171719]',
+  },
+};
 
 type VideoKind = 'Video' | 'Short';
 
@@ -41,13 +109,6 @@ type UploadDraft = {
   duration: string;
   thumbnail?: string;
 };
-
-const seedVideos: Video[] = [
-  { id: 'v1', title: 'A quiet morning in Lisbon', creator: 'Mara Sol', initials: 'MS', duration: '08:24', views: '24.8K', posted: '2h ago', color: 'linear-gradient(135deg,#e8a07a 0%,#e9d7b8 47%,#577f7e 100%)', category: 'Travel', description: 'A slow walk through Alfama before the city wakes up.', kind: 'Video' },
-  { id: 'v3', title: 'Making ramen from scratch', creator: 'June Atelier', initials: 'JA', duration: '18:42', views: '48.7K', posted: '1d ago', color: 'linear-gradient(135deg,#d86d52,#e9af59 45%,#33464b)', category: 'Food', description: 'Broth, noodles, and the patience in between.', kind: 'Video' },
-  { id: 'v5', title: 'Clay, water, and a little patience', creator: 'Inez Rowe', initials: 'IR', duration: '09:51', views: '19.3K', posted: '2d ago', color: 'linear-gradient(135deg,#dcae8b,#b86d62 48%,#5c4d62)', category: 'Create', description: 'Hand-building a simple cup in one afternoon.', kind: 'Video' },
-  { id: 'v7', title: 'Tiny garden, big harvest', creator: 'Pia & Co.', initials: 'PC', duration: '07:11', views: '17.9K', posted: '4d ago', color: 'linear-gradient(135deg,#aacd9d,#628e72 53%,#34515a)', category: 'Lifestyle', description: 'What grew well in our smallest growing season yet.', kind: 'Video' },
-];
 
 const categories = ['For you', 'Following', 'Travel', 'Create', 'Food', 'Music'];
 
@@ -211,7 +272,7 @@ function HomePage({ videos, actions }: { videos: Video[]; actions: ActionProps }
   const featured = visible[0];
   return <Shell><PageHeading eyebrow="A little something to watch" title={<>Find your next <span className="text-primary">favorite.</span></>} description="A friendly corner for thoughtful videos, curious makers, and the occasional rabbit hole." action={<Link href="/upload" data-testid="link-home-upload" className="hidden min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground shadow-sm transition-transform hover:-translate-y-0.5 sm:flex"><Upload className="size-4" />Share a video</Link>} />
     <div className="hide-scrollbar -mx-1 mb-8 flex gap-2 overflow-x-auto px-1 pb-1">{categories.map(category => <button type="button" key={category} data-testid={`button-category-${category.toLowerCase().replace(' ', '-')}`} onClick={() => setActiveCategory(category)} className={`min-h-10 shrink-0 rounded-full px-4 text-xs font-bold transition-colors ${activeCategory === category ? 'bg-foreground text-background' : 'bg-card text-muted-foreground hover:bg-muted'}`}>{category}</button>)}</div>
-    {featured ? <><div className="grid gap-5 lg:grid-cols-[1.28fr_.72fr]"><div className="rounded-2xl bg-card p-2 shadow-[0_7px_32px_hsl(0_0%_0%/.28)]"><Link href={`/watch/${featured.id}`} data-testid={`link-featured-${featured.id}`} className="block"><VideoThumb video={featured} large /></Link><div className="p-3 md:p-4"><p className="mb-2 text-xs font-bold uppercase tracking-[.16em] text-primary">{featured.isLocal ? 'Your latest upload' : 'Picked for you'}</p><Link href={`/watch/${featured.id}`} className="block"><h2 className="font-mono text-2xl font-bold tracking-[-.05em] hover:text-primary md:text-3xl">{featured.title}</h2></Link><p className="mt-2 max-w-lg text-sm leading-6 text-muted-foreground">{featured.description}</p><div className="mt-4 flex items-center gap-3"><Avatar initials={featured.initials} small /><div className="text-xs"><p className="font-bold">{featured.creator}</p><p className="text-muted-foreground">{featured.views} views · {featured.posted}</p></div><button type="button" data-testid={`button-featured-like-${featured.id}`} onClick={() => actions.toggleLike(featured.id)} className={`ml-auto flex size-10 items-center justify-center rounded-xl ${actions.liked.includes(featured.id) ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}><Heart className={`size-[18px] ${actions.liked.includes(featured.id) ? 'fill-current' : ''}`} /></button></div></div></div><div className="hidden rounded-2xl bg-secondary/55 p-6 lg:flex lg:flex-col lg:justify-between"><div><div className="mb-8 flex size-11 items-center justify-center rounded-2xl bg-card text-primary"><Sparkles className="size-5" /></div><p className="text-xs font-bold uppercase tracking-[.18em] text-secondary-foreground/65">Today on KIVO</p><h2 className="mt-3 max-w-xs font-mono text-3xl font-bold leading-[1.06] tracking-[-.06em] text-secondary-foreground">Slow down. Stay curious.</h2></div><div><p className="max-w-xs text-sm leading-6 text-secondary-foreground/75">Discover people making things because they care, not because they have to.</p><Link href="/shorts" data-testid="link-home-shorts" className="mt-5 inline-flex min-h-10 items-center gap-2 rounded-xl bg-secondary-foreground px-4 text-xs font-bold text-secondary">Browse Shorts <ChevronRight className="size-4" /></Link></div></div></div><section className="mt-10"><div className="mb-4 flex items-end justify-between"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-primary">Keep exploring</p><h2 className="mt-1 font-mono text-2xl font-bold tracking-[-.05em]">Fresh from the community</h2></div><span className="text-xs text-muted-foreground">{visible.length} videos</span></div><div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">{visible.slice(1).map(video => <VideoCard key={video.id} video={video} liked={actions.liked.includes(video.id)} saved={actions.saved.includes(video.id)} onLike={() => actions.toggleLike(video.id)} onSave={() => actions.toggleSave(video.id)} onShare={() => actions.share(video)} />)}</div></section></> : <EmptyState title="Nothing in this corner yet" description="Try another category and we'll keep looking." action={<button type="button" data-testid="button-reset-category" onClick={() => setActiveCategory('For you')} className="rounded-xl bg-foreground px-4 py-2 text-sm font-bold text-background">Back to For you</button>} />}</Shell>;
+     {featured ? <><div className="grid gap-5 lg:grid-cols-[1.28fr_.72fr]"><div className="rounded-2xl bg-card p-2 shadow-[0_7px_32px_hsl(0_0%_0%/.28)]"><Link href={`/watch/${featured.id}`} data-testid={`link-featured-${featured.id}`} className="block"><VideoThumb video={featured} large /></Link><div className="p-3 md:p-4"><p className="mb-2 text-xs font-bold uppercase tracking-[.16em] text-primary">{featured.isLocal ? 'Your latest upload' : 'Picked for you'}</p><Link href={`/watch/${featured.id}`} className="block"><h2 className="font-mono text-2xl font-bold tracking-[-.05em] hover:text-primary md:text-3xl">{featured.title}</h2></Link><p className="mt-2 max-w-lg text-sm leading-6 text-muted-foreground">{featured.description}</p><div className="mt-4 flex items-center gap-3"><Avatar initials={featured.initials} small /><div className="text-xs"><p className="font-bold">{featured.creator}</p><p className="text-muted-foreground">{featured.views} views · {featured.posted}</p></div><button type="button" data-testid={`button-featured-like-${featured.id}`} onClick={() => actions.toggleLike(featured.id)} className={`ml-auto flex size-10 items-center justify-center rounded-xl ${actions.liked.includes(featured.id) ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}><Heart className={`size-[18px] ${actions.liked.includes(featured.id) ? 'fill-current' : ''}`} /></button></div></div></div><div className="hidden rounded-2xl bg-secondary/55 p-6 lg:flex lg:flex-col lg:justify-between"><div><div className="mb-8 flex size-11 items-center justify-center rounded-2xl bg-card text-primary"><Sparkles className="size-5" /></div><p className="text-xs font-bold uppercase tracking-[.18em] text-secondary-foreground/65">Today on KIVO</p><h2 className="mt-3 max-w-xs font-mono text-3xl font-bold leading-[1.06] tracking-[-.06em] text-secondary-foreground">Slow down. Stay curious.</h2></div><div><p className="max-w-xs text-sm leading-6 text-secondary-foreground/75">Discover people making things because they care, not because they have to.</p><Link href="/shorts" data-testid="link-home-shorts" className="mt-5 inline-flex min-h-10 items-center gap-2 rounded-xl bg-secondary-foreground px-4 text-xs font-bold text-secondary">Browse Shorts <ChevronRight className="size-4" /></Link></div></div></div><section className="mt-10"><div className="mb-4 flex items-end justify-between"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-primary">Keep exploring</p><h2 className="mt-1 font-mono text-2xl font-bold tracking-[-.05em]">Fresh from the community</h2></div><span className="text-xs text-muted-foreground">{visible.length} videos</span></div><div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">{visible.slice(1).map(video => <VideoCard key={video.id} video={video} liked={actions.liked.includes(video.id)} saved={actions.saved.includes(video.id)} onLike={() => actions.toggleLike(video.id)} onSave={() => actions.toggleSave(video.id)} onShare={() => actions.share(video)} />)}</div></section></> : <EmptyState title="No videos yet" description="Your feed is ready for real uploads. Add a video to start building your KIVO shelf." action={<Link href="/upload" data-testid="button-home-upload-empty" className="rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground">Upload a video</Link>} />}</Shell>;
 }
 
 function ShortsPage({ videos, actions }: { videos: Video[]; actions: ActionProps }) {
@@ -292,10 +353,38 @@ function UploadPage({ onUpload }: { onUpload: (draft: UploadDraft) => Promise<Vi
   return <Shell><PageHeading eyebrow="Make something shareable" title="Upload a video" description="Preview it, add context, and keep the demo safely in this browser. Nothing is sent to a server." /><form onSubmit={submit} className="grid max-w-5xl gap-6 lg:grid-cols-[.8fr_1.2fr]"><div className="space-y-4"><label data-testid="dropzone-upload" className="flex min-h-[250px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border bg-card p-6 text-center transition-colors hover:border-primary hover:bg-primary/[.03]"><input data-testid="input-video-file" type="file" accept="video/*" className="sr-only" onChange={event => selectFile(event.target.files?.[0])} /><span className="flex size-14 items-center justify-center rounded-2xl bg-secondary text-secondary-foreground">{selectedFile ? <FileVideo className="size-6" /> : <Upload className="size-6" />}</span><h2 className="mt-5 max-w-full truncate text-sm font-bold">{selectedFile?.name || 'Choose a video file'}</h2><p className="mt-2 max-w-[240px] text-xs leading-5 text-muted-foreground">{selectedFile ? `${duration} · ${kind === 'Short' ? 'Vertical Short' : 'Video'}` : 'MP4, MOV, or WebM'}</p>{selectedFile && <span className="mt-5 rounded-lg bg-muted px-3 py-2 text-xs font-bold">Replace file</span>}</label>{filePreview && <div className="overflow-hidden rounded-2xl border border-border bg-card p-2"><video ref={videoRef} src={filePreview} controls playsInline preload="metadata" onLoadedMetadata={handleMetadata} onSeeked={captureThumbnail} className="aspect-video w-full rounded-xl bg-black object-contain" />{thumbnail && <div className="mt-3 flex items-center gap-3 px-2 pb-1"><img src={thumbnail} alt="Generated video thumbnail" className="size-14 rounded-lg object-cover" /><div><p className="text-xs font-bold">Thumbnail captured</p><p className="mt-1 text-xs text-muted-foreground">A frame from your local video will represent it in KIVO.</p></div></div>}</div>}</div><div className="rounded-2xl bg-card p-5 shadow-[0_7px_32px_hsl(0_0%_0%/.24)] md:p-7"><div className="space-y-5"><div><span className="mb-2 block text-xs font-bold uppercase tracking-[.14em] text-muted-foreground">Format</span><div className="grid grid-cols-2 gap-2"><button type="button" data-testid="button-upload-kind-video" onClick={() => setKind('Video')} className={`flex min-h-12 items-center justify-center gap-2 rounded-xl border text-sm font-bold ${kind === 'Video' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground'}`}><Clapperboard className="size-4" />Video</button><button type="button" data-testid="button-upload-kind-short" onClick={() => setKind('Short')} className={`flex min-h-12 items-center justify-center gap-2 rounded-xl border text-sm font-bold ${kind === 'Short' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground'}`}><Play className="size-4" />Short</button></div>{kind === 'Short' && <p className="mt-2 flex items-center gap-2 text-xs text-primary"><Sparkles className="size-3.5" />Best viewed in a vertical 9:16 frame.</p>}</div><label className="block"><span className="mb-2 block text-xs font-bold uppercase tracking-[.14em] text-muted-foreground">Title</span><input data-testid="input-upload-title" value={title} onChange={event => setTitle(event.target.value)} required placeholder="Give your video a name" className="min-h-12 w-full rounded-xl border border-border bg-background px-4 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" /></label><label className="block"><span className="mb-2 block text-xs font-bold uppercase tracking-[.14em] text-muted-foreground">Description <span className="normal-case tracking-normal font-normal">(optional)</span></span><textarea data-testid="input-upload-description" value={description} onChange={event => setDescription(event.target.value)} placeholder="What should people know before they watch?" rows={4} className="w-full resize-none rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" /></label><label className="block"><span className="mb-2 block text-xs font-bold uppercase tracking-[.14em] text-muted-foreground">Category</span><select data-testid="select-upload-category" value={category} onChange={event => setCategory(event.target.value)} className="min-h-12 w-full rounded-xl border border-border bg-background px-4 text-sm outline-none focus:border-primary">{['Travel', 'Create', 'Food', 'Music', 'Lifestyle', 'Film'].map(item => <option key={item}>{item}</option>)}</select></label></div><div className="mt-7 flex items-center justify-between border-t border-border pt-5"><p className="hidden text-xs text-muted-foreground sm:block">Local prototype only.</p><button type="submit" data-testid="button-submit-upload" disabled={!title.trim() || !selectedFile || saving} className="ml-auto flex min-h-12 items-center gap-2 rounded-xl bg-primary px-5 text-sm font-bold text-primary-foreground transition-opacity disabled:cursor-not-allowed disabled:opacity-40"><Upload className="size-4" />{saving ? 'Saving locally…' : 'Save to KIVO'}</button></div></div></form></Shell>;
 }
 
-function ProfilePage({ videos, actions, localVideos }: { videos: Video[]; actions: ActionProps; localVideos: Video[] }) {
+function ProfileAuthCard() {
+  const { isLoaded, user } = useUser();
+  const { signOut } = useClerk();
+
+  if (!isLoaded) {
+    return <div className="rounded-2xl border border-border bg-card p-5 text-sm text-muted-foreground">Loading account…</div>;
+  }
+
+  return <div className="rounded-2xl border border-border bg-card p-5">
+    <Show when="signed-out">
+      <p className="text-sm font-bold">Sign in to your KIVO account</p>
+      <p className="mt-2 text-sm leading-6 text-muted-foreground">Use Google or email and password to keep your account identity with KIVO.</p>
+      <Link href="/sign-in" data-testid="link-profile-sign-in" className="mt-4 inline-flex min-h-11 items-center rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground">Continue to sign in</Link>
+      <p className="mt-3 text-xs text-muted-foreground">Phone-number sign-in is not available in the managed KIVO auth setup.</p>
+    </Show>
+    <Show when="signed-in">
+      {user && <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+        <img src={user.imageUrl} alt="" className="size-12 rounded-full bg-muted object-cover" />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-bold">{user.fullName || user.username || 'KIVO member'}</p>
+          <p className="truncate text-xs text-muted-foreground">{user.primaryEmailAddress?.emailAddress || 'Signed in with Google'}</p>
+        </div>
+        <button type="button" data-testid="button-profile-sign-out" onClick={() => { void signOut({ redirectUrl: basePath || '/' }); }} className="min-h-10 rounded-xl bg-muted px-4 text-xs font-bold text-muted-foreground hover:text-foreground">Sign out</button>
+      </div>}
+    </Show>
+  </div>;
+}
+
+function ProfilePage({ actions, localVideos }: { actions: ActionProps; localVideos: Video[] }) {
   const [tab, setTab] = useState<'videos' | 'saved'>('videos');
   const profileVideos = tab === 'videos' ? localVideos : localVideos.filter(video => actions.saved.includes(video.id));
-  return <Shell><div className="border-b border-border py-8 md:py-12"><div className="flex flex-col gap-5 sm:flex-row sm:items-center"><span className="flex size-20 items-center justify-center rounded-[25px] bg-primary text-2xl font-bold text-primary-foreground">K</span><div><p className="text-xs font-bold uppercase tracking-[.16em] text-primary">Local demo profile</p><h1 className="mt-1 font-mono text-3xl font-bold tracking-[-.06em]">My Profile</h1><p className="mt-2 text-sm text-muted-foreground">@myprofile · {localVideos.length} uploads · local only</p></div><Link href="/upload" className="flex min-h-10 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-xs font-bold text-primary-foreground sm:ml-auto"><Plus className="size-4" />New upload</Link></div><p className="mt-6 max-w-xl text-sm leading-6 text-muted-foreground">Your session uploads live here while you prototype KIVO. They are stored in this browser and are not public yet.</p></div><div className="flex gap-6 border-b border-border"><button type="button" data-testid="button-profile-videos-tab" onClick={() => setTab('videos')} className={`min-h-14 border-b-2 px-1 text-sm font-bold ${tab === 'videos' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground'}`}>My uploads <span className="ml-1 text-xs opacity-60">{localVideos.length}</span></button><button type="button" data-testid="button-profile-saved-tab" onClick={() => setTab('saved')} className={`min-h-14 border-b-2 px-1 text-sm font-bold ${tab === 'saved' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground'}`}>Saved uploads <span className="ml-1 text-xs opacity-60">{localVideos.filter(video => actions.saved.includes(video.id)).length}</span></button></div><section className="py-8">{profileVideos.length ? <div className="grid gap-x-5 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">{profileVideos.map(video => <VideoCard key={video.id} video={video} compact liked={actions.liked.includes(video.id)} saved={actions.saved.includes(video.id)} onLike={() => actions.toggleLike(video.id)} onSave={() => actions.toggleSave(video.id)} onShare={() => actions.share(video)} />)}</div> : <EmptyState title={tab === 'videos' ? 'Your local shelf is empty' : 'No saved uploads yet'} description={tab === 'videos' ? 'Upload a video or Short and it will appear here.' : 'Save one of your uploaded videos to see it here.'} action={<Link href={tab === 'videos' ? '/upload' : '/'} data-testid="link-profile-discover" className="rounded-xl bg-foreground px-4 py-2 text-sm font-bold text-background">{tab === 'videos' ? 'Upload a video' : 'Browse videos'}</Link>} />}</section></Shell>;
+  return <Shell><div className="border-b border-border py-8 md:py-12"><div className="flex flex-col gap-5 sm:flex-row sm:items-center"><span className="flex size-20 items-center justify-center rounded-[25px] bg-primary text-2xl font-bold text-primary-foreground">K</span><div><p className="text-xs font-bold uppercase tracking-[.16em] text-primary">KIVO account</p><h1 className="mt-1 font-mono text-3xl font-bold tracking-[-.06em]">My Profile</h1><p className="mt-2 text-sm text-muted-foreground">{localVideos.length} local uploads · stored in this browser</p></div><Link href="/upload" className="flex min-h-10 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-xs font-bold text-primary-foreground sm:ml-auto"><Plus className="size-4" />New upload</Link></div><p className="mt-6 max-w-xl text-sm leading-6 text-muted-foreground">Your uploads live here while you prototype KIVO. They are stored in this browser and are not public yet.</p><div className="mt-6"><ProfileAuthCard /></div></div><div className="flex gap-6 border-b border-border"><button type="button" data-testid="button-profile-videos-tab" onClick={() => setTab('videos')} className={`min-h-14 border-b-2 px-1 text-sm font-bold ${tab === 'videos' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground'}`}>My uploads <span className="ml-1 text-xs opacity-60">{localVideos.length}</span></button><button type="button" data-testid="button-profile-saved-tab" onClick={() => setTab('saved')} className={`min-h-14 border-b-2 px-1 text-sm font-bold ${tab === 'saved' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground'}`}>Saved uploads <span className="ml-1 text-xs opacity-60">{localVideos.filter(video => actions.saved.includes(video.id)).length}</span></button></div><section className="py-8">{profileVideos.length ? <div className="grid gap-x-5 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">{profileVideos.map(video => <VideoCard key={video.id} video={video} compact liked={actions.liked.includes(video.id)} saved={actions.saved.includes(video.id)} onLike={() => actions.toggleLike(video.id)} onSave={() => actions.toggleSave(video.id)} onShare={() => actions.share(video)} />)}</div> : <EmptyState title={tab === 'videos' ? 'Your local shelf is empty' : 'No saved uploads yet'} description={tab === 'videos' ? 'Upload a video or Short and it will appear here.' : 'Save one of your uploaded videos to see it here.'} action={<Link href={tab === 'videos' ? '/upload' : '/'} data-testid="link-profile-discover" className="rounded-xl bg-foreground px-4 py-2 text-sm font-bold text-background">{tab === 'videos' ? 'Upload a video' : 'Browse videos'}</Link>} />}</section></Shell>;
 }
 
 function WatchPage({ videos, actions }: { videos: Video[]; actions: ActionProps }) {
@@ -306,7 +395,7 @@ function WatchPage({ videos, actions }: { videos: Video[]; actions: ActionProps 
   const [commentSent, setCommentSent] = useState(false);
   if (!video) return <NotFoundPage />;
   const submitComment = (event: FormEvent) => { event.preventDefault(); if (!comment.trim()) return; setComment(''); setCommentSent(true); };
-  return <Shell><div className="mx-auto max-w-4xl py-8 md:py-12"><Link href="/" className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground"><ChevronLeft className="size-4" />Back to feed</Link><div className="overflow-hidden rounded-2xl bg-card p-2 shadow-[0_8px_36px_hsl(0_0%_0%/.28)]"><div className="relative overflow-hidden rounded-xl bg-black">{video.sourceUrl ? <video src={video.sourceUrl} poster={video.thumbnail} controls autoPlay playsInline className="max-h-[68vh] min-h-[240px] w-full object-contain" /> : <VideoThumb video={video} large />}</div><div className="p-4 md:p-7"><div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-primary">{video.kind === 'Short' ? 'Short' : video.category}</p><h1 className="mt-2 font-mono text-3xl font-bold tracking-[-.05em] md:text-4xl">{video.title}</h1><p className="mt-2 text-sm text-muted-foreground">{video.views} views · {video.posted} · {video.creator}</p></div><button type="button" onClick={() => setFollowing(value => !value)} className={`flex min-h-10 items-center gap-2 rounded-xl px-4 text-xs font-bold ${following ? 'bg-secondary text-secondary-foreground' : 'bg-primary text-primary-foreground'}`}><Users className="size-4" />{following ? 'Following' : 'Follow'}</button></div><p className="mt-6 max-w-2xl text-sm leading-7 text-muted-foreground">{video.description}</p>{video.isLocal && <p className="mt-4 rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 text-xs text-primary">Local demo media · this video is stored in your browser and has not been uploaded to a server.</p>}{!video.sourceUrl && <p className="mt-4 rounded-xl border border-border bg-background px-4 py-3 text-xs text-muted-foreground">This is sample content, so there is no source video attached. Local uploads open with real playback.</p>}<div className="mt-6 flex flex-wrap gap-2 border-t border-border pt-5"><button type="button" onClick={() => actions.toggleLike(video.id)} className={`flex min-h-10 items-center gap-2 rounded-xl px-4 text-xs font-bold ${actions.liked.includes(video.id) ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}><Heart className={`size-4 ${actions.liked.includes(video.id) ? 'fill-current' : ''}`} />{actions.liked.includes(video.id) ? 'Liked' : 'Like'}</button><button type="button" onClick={() => actions.toggleSave(video.id)} className={`flex min-h-10 items-center gap-2 rounded-xl px-4 text-xs font-bold ${actions.saved.includes(video.id) ? 'bg-secondary text-secondary-foreground' : 'bg-muted text-muted-foreground'}`}><Bookmark className={`size-4 ${actions.saved.includes(video.id) ? 'fill-current' : ''}`} />{actions.saved.includes(video.id) ? 'Saved' : 'Save'}</button><button type="button" onClick={() => { void actions.share(video); }} className="flex min-h-10 items-center gap-2 rounded-xl bg-muted px-4 text-xs font-bold text-muted-foreground"><Share2 className="size-4" />Share</button></div><form onSubmit={submitComment} className="mt-7 flex gap-2"><input value={comment} onChange={event => setComment(event.target.value)} placeholder="Leave a comment in this local demo" className="min-h-11 min-w-0 flex-1 rounded-xl border border-border bg-background px-4 text-sm outline-none focus:border-primary" /><button type="submit" className="flex min-h-11 items-center gap-2 rounded-xl bg-foreground px-4 text-xs font-bold text-background"><MessageCircle className="size-4" />Comment</button></form>{commentSent && <p className="mt-3 text-xs font-bold text-primary">Comment added locally for this prototype.</p>}</div></div></div></Shell>;
+   return <Shell><div className="mx-auto max-w-4xl py-8 md:py-12"><Link href="/" className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground"><ChevronLeft className="size-4" />Back to feed</Link><div className="overflow-hidden rounded-2xl bg-card p-2 shadow-[0_8px_36px_hsl(0_0%_0%/.28)]"><div className="relative overflow-hidden rounded-xl bg-black">{video.sourceUrl ? <video src={video.sourceUrl} poster={video.thumbnail} controls autoPlay playsInline className="max-h-[68vh] min-h-[240px] w-full object-contain" /> : <VideoThumb video={video} large />}</div><div className="p-4 md:p-7"><div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-primary">{video.kind === 'Short' ? 'Short' : video.category}</p><h1 className="mt-2 font-mono text-3xl font-bold tracking-[-.05em] md:text-4xl">{video.title}</h1><p className="mt-2 text-sm text-muted-foreground">{video.views} views · {video.posted} · {video.creator}</p></div><button type="button" onClick={() => setFollowing(value => !value)} className={`flex min-h-10 items-center gap-2 rounded-xl px-4 text-xs font-bold ${following ? 'bg-secondary text-secondary-foreground' : 'bg-primary text-primary-foreground'}`}><Users className="size-4" />{following ? 'Following' : 'Follow'}</button></div><p className="mt-6 max-w-2xl text-sm leading-7 text-muted-foreground">{video.description}</p>{video.isLocal && <p className="mt-4 rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 text-xs text-primary">Local demo media · this video is stored in your browser and has not been uploaded to a server.</p>}{!video.sourceUrl && <p className="mt-4 rounded-xl border border-border bg-background px-4 py-3 text-xs text-muted-foreground">This local video's original file is unavailable in this browser. Upload it again to restore playback.</p>}<div className="mt-6 flex flex-wrap gap-2 border-t border-border pt-5"><button type="button" onClick={() => actions.toggleLike(video.id)} className={`flex min-h-10 items-center gap-2 rounded-xl px-4 text-xs font-bold ${actions.liked.includes(video.id) ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}><Heart className={`size-4 ${actions.liked.includes(video.id) ? 'fill-current' : ''}`} />{actions.liked.includes(video.id) ? 'Liked' : 'Like'}</button><button type="button" onClick={() => actions.toggleSave(video.id)} className={`flex min-h-10 items-center gap-2 rounded-xl px-4 text-xs font-bold ${actions.saved.includes(video.id) ? 'bg-secondary text-secondary-foreground' : 'bg-muted text-muted-foreground'}`}><Bookmark className={`size-4 ${actions.saved.includes(video.id) ? 'fill-current' : ''}`} />{actions.saved.includes(video.id) ? 'Saved' : 'Save'}</button><button type="button" onClick={() => { void actions.share(video); }} className="flex min-h-10 items-center gap-2 rounded-xl bg-muted px-4 text-xs font-bold text-muted-foreground"><Share2 className="size-4" />Share</button></div><form onSubmit={submitComment} className="mt-7 flex gap-2"><input value={comment} onChange={event => setComment(event.target.value)} placeholder="Leave a comment in this local demo" className="min-h-11 min-w-0 flex-1 rounded-xl border border-border bg-background px-4 text-sm outline-none focus:border-primary" /><button type="submit" className="flex min-h-11 items-center gap-2 rounded-xl bg-foreground px-4 text-xs font-bold text-background"><MessageCircle className="size-4" />Comment</button></form>{commentSent && <p className="mt-3 text-xs font-bold text-primary">Comment added locally for this prototype.</p>}</div></div></div></Shell>;
 }
 
 function NotFoundPage() {
@@ -315,7 +404,7 @@ function NotFoundPage() {
 }
 
 function Router({ videos, actions, localVideos, onUpload }: { videos: Video[]; actions: ActionProps; localVideos: Video[]; onUpload: (draft: UploadDraft) => Promise<Video> }) {
-  return <Switch><Route path="/" component={() => <HomePage videos={videos} actions={actions} />} /><Route path="/shorts" component={() => <ShortsPage videos={videos} actions={actions} />} /><Route path="/upload" component={() => <UploadPage onUpload={onUpload} />} /><Route path="/search" component={() => <SearchPage videos={videos} actions={actions} />} /><Route path="/profile" component={() => <ProfilePage videos={videos} actions={actions} localVideos={localVideos} />} /><Route path="/watch/:id" component={() => <WatchPage videos={videos} actions={actions} />} /><Route component={NotFoundPage} /></Switch>;
+  return <Switch><Route path="/sign-in/*?" component={() => <SignInPage />} /><Route path="/sign-up/*?" component={() => <SignUpPage />} /><Route path="/" component={() => <HomePage videos={videos} actions={actions} />} /><Route path="/shorts" component={() => <ShortsPage videos={videos} actions={actions} />} /><Route path="/upload" component={() => <UploadPage onUpload={onUpload} />} /><Route path="/search" component={() => <SearchPage videos={videos} actions={actions} />} /><Route path="/profile" component={() => <ProfilePage actions={actions} localVideos={localVideos} />} /><Route path="/watch/:id" component={() => <WatchPage videos={videos} actions={actions} />} /><Route component={NotFoundPage} /></Switch>;
 }
 
 function RoutedErrorBoundary({ children }: { children: ReactNode }) {
@@ -323,7 +412,16 @@ function RoutedErrorBoundary({ children }: { children: ReactNode }) {
   return <ErrorBoundary resetKey={location}>{children}</ErrorBoundary>;
 }
 
-function App() {
+function SignInPage() {
+  return <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4"><SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} /></div>;
+}
+
+function SignUpPage() {
+  return <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4"><SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} /></div>;
+}
+
+function ClerkApp() {
+  const [, setLocation] = useLocation();
   const [localVideos, setLocalVideos] = useState<Video[]>([]);
   const localMediaUrls = useRef<string[]>([]);
   const localReady = useRef(false);
@@ -364,7 +462,7 @@ function App() {
     localStorage.setItem(LOCAL_ACTIONS_KEY, JSON.stringify({ liked, saved }));
   }, [liked, saved]);
 
-  const allVideos = useMemo(() => [...localVideos, ...seedVideos], [localVideos]);
+  const allVideos = useMemo(() => localVideos, [localVideos]);
   const actions: ActionProps = {
     liked,
     saved,
@@ -399,7 +497,32 @@ function App() {
     return newVideo;
   };
 
-  return <QueryClientProvider client={queryClient}><TooltipProvider><WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}><RoutedErrorBoundary><Router videos={allVideos} actions={actions} localVideos={localVideos} onUpload={handleUpload} /></RoutedErrorBoundary></WouterRouter><Toaster /></TooltipProvider></QueryClientProvider>;
+  return <ClerkProvider
+    publishableKey={clerkPubKey}
+    proxyUrl={clerkProxyUrl}
+    appearance={clerkAppearance}
+    signInUrl={`${basePath}/sign-in`}
+    signUpUrl={`${basePath}/sign-up`}
+    localization={{
+      signIn: { start: { title: 'Welcome back', subtitle: 'Sign in to KIVO' } },
+      signUp: { start: { title: 'Create your KIVO account', subtitle: 'Share what you make' } },
+    }}
+    routerPush={to => setLocation(stripBase(to))}
+    routerReplace={to => setLocation(stripBase(to), { replace: true })}
+  >
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <RoutedErrorBoundary>
+          <Router videos={allVideos} actions={actions} localVideos={localVideos} onUpload={handleUpload} />
+        </RoutedErrorBoundary>
+        <Toaster />
+      </TooltipProvider>
+    </QueryClientProvider>
+  </ClerkProvider>;
+}
+
+function App() {
+  return <WouterRouter base={basePath}><ClerkApp /></WouterRouter>;
 }
 
 export default App;
