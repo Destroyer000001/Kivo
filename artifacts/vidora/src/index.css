@@ -36,54 +36,30 @@
 }
 
 :root {
-  --background: 36 33% 96%;
-  --foreground: 226 31% 16%;
-  --border: 35 19% 86%;
-  --input: 35 19% 86%;
-  --ring: 8 83% 63%;
-  --card: 40 38% 98%;
-  --card-foreground: 226 31% 16%;
-  --card-border: 35 21% 89%;
-  --popover: 40 38% 98%;
-  --popover-foreground: 226 31% 16%;
-  --popover-border: 35 21% 89%;
-  --primary: 8 83% 63%;
-  --primary-foreground: 40 38% 98%;
-  --secondary: 176 27% 85%;
-  --secondary-foreground: 183 30% 21%;
-  --muted: 34 25% 91%;
-  --muted-foreground: 224 13% 45%;
-  --accent: 42 93% 67%;
-  --accent-foreground: 226 31% 16%;
-  --destructive: 2 68% 51%;
-  --destructive-foreground: 40 38% 98%;
+  --background: 240 7% 5%;
+  --foreground: 0 0% 96%;
+  --border: 240 6% 18%;
+  --input: 240 6% 18%;
+  --ring: 74 100% 65%;
+  --card: 240 6% 9%;
+  --card-foreground: 0 0% 96%;
+  --card-border: 240 6% 18%;
+  --popover: 240 6% 9%;
+  --popover-foreground: 0 0% 96%;
+  --popover-border: 240 6% 18%;
+  --primary: 74 100% 65%;
+  --primary-foreground: 240 7% 5%;
+  --secondary: 193 39% 20%;
+  --secondary-foreground: 188 53% 88%;
+  --muted: 240 5% 13%;
+  --muted-foreground: 240 5% 62%;
+  --accent: 262 100% 78%;
+  --accent-foreground: 240 7% 5%;
+  --destructive: 0 80% 62%;
+  --destructive-foreground: 0 0% 100%;
   --app-font-sans: 'DM Sans', sans-serif;
   --app-font-mono: 'Space Grotesk', monospace;
   --radius: 1rem;
-}
-
-.dark {
-  --background: 225 28% 10%;
-  --foreground: 38 31% 94%;
-  --border: 225 17% 23%;
-  --input: 225 17% 23%;
-  --ring: 8 83% 68%;
-  --card: 225 25% 14%;
-  --card-foreground: 38 31% 94%;
-  --card-border: 225 17% 23%;
-  --popover: 225 25% 14%;
-  --popover-foreground: 38 31% 94%;
-  --popover-border: 225 17% 23%;
-  --primary: 8 83% 68%;
-  --primary-foreground: 225 28% 10%;
-  --secondary: 175 22% 26%;
-  --secondary-foreground: 170 35% 91%;
-  --muted: 225 21% 19%;
-  --muted-foreground: 225 12% 67%;
-  --accent: 42 93% 64%;
-  --accent-foreground: 225 28% 10%;
-  --destructive: 2 68% 59%;
-  --destructive-foreground: 38 31% 94%;
 }
 
 @layer base {
@@ -104,9 +80,9 @@
 .animate-rise-in { animation: rise-in .45s ease-out both; }
 .animate-soft-pulse { animation: soft-pulse 2.8s ease-in-out infinite; }
 
-.vidora-shell {
+.kivo-shell {
   background:
-    radial-gradient(circle at 86% 3%, hsl(42 93% 67% / .16), transparent 22rem),
+    radial-gradient(circle at 86% 3%, hsl(74 100% 65% / .11), transparent 22rem),
     hsl(var(--background));
 }
 .video-art { isolation: isolate; }
@@ -115,7 +91,7 @@
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: linear-gradient(145deg, transparent 35%, hsl(226 31% 16% / .26));
+  background: linear-gradient(145deg, transparent 35%, hsl(240 7% 5% / .34));
 }
 .hide-scrollbar { scrollbar-width: none; }
 .hide-scrollbar::-webkit-scrollbar { display: none; }
