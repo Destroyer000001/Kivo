@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Vidora"
+description = "A responsive frontend-only video sharing app with a home feed, Shorts, upload flow, search, and profile screens using sample video content."
+version = "1.0.0"
+id = "artifacts/vidora"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22846
+
+[services.development]
+run = "pnpm --filter @workspace/vidora run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/vidora", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/vidora/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22846"
+BASE_PATH = "/"
