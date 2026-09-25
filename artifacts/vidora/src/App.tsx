@@ -44,13 +44,9 @@ type UploadDraft = {
 
 const seedVideos: Video[] = [
   { id: 'v1', title: 'A quiet morning in Lisbon', creator: 'Mara Sol', initials: 'MS', duration: '08:24', views: '24.8K', posted: '2h ago', color: 'linear-gradient(135deg,#e8a07a 0%,#e9d7b8 47%,#577f7e 100%)', category: 'Travel', description: 'A slow walk through Alfama before the city wakes up.', kind: 'Video' },
-  { id: 'v2', title: 'The 15-minute desk reset', creator: 'Niko Park', initials: 'NP', duration: '00:45', views: '11.2K', posted: '5h ago', color: 'linear-gradient(135deg,#c9d8bd,#74948b 52%,#374e59)', category: 'Lifestyle', description: 'Small changes that make a workday feel a little lighter.', kind: 'Short' },
   { id: 'v3', title: 'Making ramen from scratch', creator: 'June Atelier', initials: 'JA', duration: '18:42', views: '48.7K', posted: '1d ago', color: 'linear-gradient(135deg,#d86d52,#e9af59 45%,#33464b)', category: 'Food', description: 'Broth, noodles, and the patience in between.', kind: 'Video' },
-  { id: 'v4', title: 'Notes from a rainy train', creator: 'Theo North', initials: 'TN', duration: '00:38', views: '8.4K', posted: '1d ago', color: 'linear-gradient(135deg,#a4b7cb,#657892 52%,#252d47)', category: 'Film', description: 'A pocket film from the coastal line north.', kind: 'Short' },
   { id: 'v5', title: 'Clay, water, and a little patience', creator: 'Inez Rowe', initials: 'IR', duration: '09:51', views: '19.3K', posted: '2d ago', color: 'linear-gradient(135deg,#dcae8b,#b86d62 48%,#5c4d62)', category: 'Create', description: 'Hand-building a simple cup in one afternoon.', kind: 'Video' },
-  { id: 'v6', title: 'The city sounds at 6:17', creator: 'Luca Venn', initials: 'LV', duration: '00:52', views: '31.5K', posted: '3d ago', color: 'linear-gradient(135deg,#f1c86b,#d77759 46%,#453e66)', category: 'Music', description: 'Field recordings and a short walk through downtown.', kind: 'Short' },
   { id: 'v7', title: 'Tiny garden, big harvest', creator: 'Pia & Co.', initials: 'PC', duration: '07:11', views: '17.9K', posted: '4d ago', color: 'linear-gradient(135deg,#aacd9d,#628e72 53%,#34515a)', category: 'Lifestyle', description: 'What grew well in our smallest growing season yet.', kind: 'Video' },
-  { id: 'v8', title: 'How I frame a room', creator: 'Amari Reed', initials: 'AR', duration: '00:41', views: '12.6K', posted: '5d ago', color: 'linear-gradient(135deg,#dfb4aa,#c47d84 47%,#5b4869)', category: 'Create', description: 'A practical guide to finding the shot in ordinary spaces.', kind: 'Short' },
 ];
 
 const categories = ['For you', 'Following', 'Travel', 'Create', 'Food', 'Music'];
